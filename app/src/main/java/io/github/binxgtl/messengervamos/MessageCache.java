@@ -9,14 +9,14 @@ import java.util.Map;
 final class MessageCache {
     private static final int MAX = 250;
 
-    static final class Entry {
+    static final class CachedMessage {
         final String id;
         final String text;
         final String sender;
         final String thread;
         final long time;
 
-        Entry(String id, String text, String sender, String thread) {
+        CachedMessage(String id, String text, String sender, String thread) {
             this.id = id;
             this.text = text;
             this.sender = sender;
@@ -25,9 +25,9 @@ final class MessageCache {
         }
     }
 
-    private final LinkedHashMap<String, Entry> map = new LinkedHashMap<String, Entry>(MAX + 1, 0.75f, true) {
+    private final LinkedHashMap<String, CachedMessage> map = new LinkedHashMap<String, CachedMessage>(MAX + 1, 0.75f, true) {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Entry> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<String, CachedMessage> eldest) {
             return size() > MAX;
         }
     };
@@ -42,7 +42,7 @@ final class MessageCache {
         if (id.isEmpty() || text.isEmpty()) return;
         String sender = args.get(3) instanceof String ? (String) args.get(3) : "";
         String thread = String.valueOf(args.get(2));
-        map.put(id, new Entry(id, text, sender, thread));
+        map.put(id, new CachedMessage(id, text, sender, thread));
         FileLogger.i("M3 message observed id=" + shortId(id) + " textLen=" + text.length());
         if (persistText) {
             FileLogger.writeNamed("message-cache.tsv", sanitize(id) + "\t" + sanitize(thread) + "\t" + sanitize(sender) + "\t" + sanitize(text) + "\n", true);
@@ -77,7 +77,7 @@ final class MessageCache {
     }
 
     private void recordRecovered(String id, boolean persistText, String source) {
-        Entry e = map.get(id);
+        CachedMessage e = map.get(id);
         if (e == null) return;
         FileLogger.i("M3 UNSENT recovered source=" + source + " id=" + shortId(id) + " textLen=" + e.text.length());
         if (persistText) {
