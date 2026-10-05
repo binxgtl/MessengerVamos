@@ -23,6 +23,8 @@ final class HookInstaller {
     private final MessageCache messageCache = new MessageCache();
     private final Set<String> seenDiagnostics = new HashSet<>();
     private final Set<String> typingDiagnostics = new HashSet<>();
+    private final Set<String> observerDiagnostics = new HashSet<>();
+    private final Set<String> unsentDiagnostics = new HashSet<>();
 
     HookInstaller(ModuleEntry module, ClassLoader classLoader, Prefs prefs, CompatProfile profile, String version) {
         this.module = module;
@@ -117,6 +119,7 @@ final class HookInstaller {
             String id = "message-observer/" + method.getName() + "/" + method.getParameterCount();
             if (tryHook(id, method, chain -> {
                 List<Object> args = chain.getArgs();
+                if (prefs.diagnostics()) logObserverCandidate(method, args);
                 try { messageCache.observeCoreDispatch(args, prefs.cacheMessageText()); }
                 catch (Throwable t) { FileLogger.e("M3 message observer callback failed", t); }
                 return chain.proceed();
@@ -140,6 +143,7 @@ final class HookInstaller {
             String id = "unsent-probe/" + method.getName();
             if (tryHook(id, method, chain -> {
                 Object result = chain.proceed();
+                if (prefs.diagnostics()) logUnsentCandidate(method, result);
                 if (Boolean.TRUE.equals(result)) {
                     FileLogger.runtimeMarker("UNSENT semantic flag " + method.getName());
                     messageCache.onUnsentFlag(chain.getThisObject(), prefs.cacheMessageText());
@@ -196,6 +200,22 @@ final class HookInstaller {
         String key = method.getName() + ":" + api + ":" + typeShape(args);
         synchronized (typingDiagnostics) {
             if (typingDiagnostics.add(key)) FileLogger.i("M2 typing candidate " + key);
+        }
+    }
+
+    private void logObserverCandidate(Method method, List<Object> args) {
+        String key = method.getName() + ":" + typeShape(args);
+        synchronized (observerDiagnostics) {
+            if (observerDiagnostics.size() < 32 && observerDiagnostics.add(key)) {
+                FileLogger.i("M3 observer candidate " + key);
+            }
+        }
+    }
+
+    private void logUnsentCandidate(Method method, Object result) {
+        String key = method.getName() + ":" + result;
+        synchronized (unsentDiagnostics) {
+            if (unsentDiagnostics.add(key)) FileLogger.i("M3 unsent probe candidate " + key);
         }
     }
 
