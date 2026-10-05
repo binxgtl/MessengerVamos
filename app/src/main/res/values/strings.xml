@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MessengerVamos</string>
+    <string name="app_description">Clean-room Messenger privacy hooks and diagnostics for Messenger 581.x</string>
+</resources>
