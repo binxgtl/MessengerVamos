@@ -10,6 +10,11 @@ import java.util.Set;
 import io.github.libxposed.api.XposedInterface;
 
 final class HookInstaller {
+    @FunctionalInterface
+    private interface HookBody {
+        Object invoke(XposedInterface.Chain chain) throws Throwable;
+    }
+
     private final ModuleEntry module;
     private final ClassLoader classLoader;
     private final Prefs prefs;
@@ -145,13 +150,13 @@ final class HookInstaller {
         FileLogger.i("M3 semantic unsent hooks installed=" + installed);
     }
 
-    private boolean tryHook(String id, Method method, XposedInterface.Interceptor interceptor) {
+    private boolean tryHook(String id, Method method, HookBody body) {
         try {
             method.setAccessible(true);
             FileLogger.hookPending(id, method);
             module.hook(method)
                     .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
-                    .intercept(interceptor);
+                    .intercept(chain -> body.invoke(chain));
             FileLogger.hookOk(id, method);
             return true;
         } catch (Throwable t) {
